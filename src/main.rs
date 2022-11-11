@@ -1,4 +1,14 @@
 mod wu_line;
+use serde::Serialize;
+#[derive(Serialize)]
+struct DataItem {
+    path: String,
+    classification: &'static str,
+}
+#[derive(Serialize)]
+struct Dataset {
+    data_items: Vec<DataItem>,
+}
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -7,6 +17,26 @@ fn main() {
         let num_not_triangles = usize::from_str_radix(&args[2], 10).unwrap();
         let triangles = generate_triangles(num_triangles);
         let not_triangles = generate_not_triangles(num_not_triangles);
+
+        let mut data_items = vec![];
+        for t in triangles {
+            data_items.push(DataItem {
+                path: t,
+                classification: "triangle",
+            })
+        }
+        for nt in not_triangles {
+            data_items.push(DataItem {
+                path: nt,
+                classification: "not-triangle",
+            })
+        }
+
+        let the_dataset = Dataset { data_items };
+        let file = File::create("output/dataset.json").unwrap();
+        let writer = BufWriter::new(file);
+        serde_json::to_writer(writer, &the_dataset).unwrap();
+
     } else {
         println!("Usage: triangle_generator <#triangles> <#not-triangles>")
     }
@@ -45,14 +75,14 @@ fn generate_not_triangles(num: usize) -> Vec<String> {
         let mut encoder = png::Encoder::new(w, 32, 32);
         encoder.set_color(png::ColorType::Grayscale); // black/white
         encoder.set_depth(png::BitDepth::Eight); // 0-256
-        //        encoder.set_source_gamma(png::ScaledFloat::from_scaled(45455));
+                                                 //        encoder.set_source_gamma(png::ScaledFloat::from_scaled(45455));
         encoder.set_source_gamma(png::ScaledFloat::new(1.0 / 2.2));
         let source_chromaticities = png::SourceChromaticities::new(
-                // Using unscaled instantiation here
-        (0.31270, 0.32900),
-        (0.64000, 0.33000),
-        (0.30000, 0.60000),
-        (0.15000, 0.06000),
+            // Using unscaled instantiation here
+            (0.31270, 0.32900),
+            (0.64000, 0.33000),
+            (0.30000, 0.60000),
+            (0.15000, 0.06000),
         );
         encoder.set_source_chromaticities(source_chromaticities);
         let mut writer = encoder.write_header().unwrap();
@@ -110,12 +140,12 @@ fn generate_circle(matrix: &mut [u8; 1024], rng: &mut ThreadRng) -> bool {
 fn generate_rectangle(matrix: &mut [u8; 1024], rng: &mut ThreadRng) -> bool {
     let x = rng.gen_range(0..28);
     let y = rng.gen_range(0..28);
-    let w = rng.gen_range(4..32-x);
-    let h = rng.gen_range(4..32-y);
+    let w = rng.gen_range(4..32 - x);
+    let h = rng.gen_range(4..32 - y);
 
     draw_line::<1024, 32>(matrix, (x, y), (x + w, y));
     draw_line::<1024, 32>(matrix, (x, y + h), (x + w, y + h));
-    draw_line::<1024, 32>(matrix, (x,y), (x, y + h));
+    draw_line::<1024, 32>(matrix, (x, y), (x, y + h));
     draw_line::<1024, 32>(matrix, (x + w, y), (x + w, y + h));
 
     true
